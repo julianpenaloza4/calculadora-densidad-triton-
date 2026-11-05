@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora de Densidad de Mezclas - Guía #8</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f4f6f8; margin: 20px; }
+    .container { max-width: 500px; background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin: auto; }
+    h2 { color: #2c3e50; text-align: center; margin-top: 0; }
+    .input-group { margin-bottom: 12px; }
+    label { display: block; font-weight: bold; margin-bottom: 4px; color: #34495e; }
+    input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button:hover { background-color: #219150; }
+    .results { margin-top: 20px; padding: 15px; background: #ecf0f1; border-radius: 5px; }
+    .results p { margin: 6px 0; font-size: 15px; }
+    .highlight { font-weight: bold; color: #2980b9; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Calculadora de Densidad</h2>
+  
+  <div class="input-group">
+    <label>Masa Cemento (g):</label>
+    <input type="number" id="cemento" value="100">
+  </div>
+  
+  <div class="input-group">
+    <label>Masa Acelerante CaCl₂ (g):</label>
+    <input type="number" id="cacl2" value="1.5">
+  </div>
+  
+  <div class="input-group">
+    <label>Volumen Agua (mL):</label>
+    <input type="number" id="agua" value="30">
+  </div>
+
+  <div class="input-group">
+    <label>Volumen Triton X-100 (mL):</label>
+    <input type="number" id="triton" value="0.94" step="0.01">
+  </div>
+
+  <div class="input-group">
+    <label>Masa Carbonato de Calcio CaCO₃ (g):</label>
+    <input type="number" id="caco3" value="0">
+  </div>
+
+  <button onclick="calcularDensidad()">Calcular Densidad</button>
+
+  <div class="results" id="resultados" style="display:none;">
+    <h3>Resultados:</h3>
+    <p>Masa Total: <span class="highlight" id="resMasa"></span> g</p>
+    <p>Densidad Teórica (Sin Aire): <span class="highlight" id="resTeorica"></span> g/cm³</p>
+    <p>Aire Ocluido Estimado: <span class="highlight" id="resAire"></span> %</p>
+    <p><strong>Densidad Estimada (Con Aire): <span class="highlight" id="resCorregida"></span> g/cm³</strong></p>
+  </div>
+</div>
+
+<script>
+function calcularDensidad() {
+  const mCemento = parseFloat(document.getElementById('cemento').value) || 0;
+  const mCacl2 = parseFloat(document.getElementById('cacl2').value) || 0;
+  const vAgua = parseFloat(document.getElementById('agua').value) || 0;
+  const vTriton = parseFloat(document.getElementById('triton').value) || 0;
+  const mCaco3 = parseFloat(document.getElementById('caco3').value) || 0;
+
+  // Densidades fijas (g/cm³)
+  const rhoCemento = 3.15, rhoAgua = 1.00, rhoCacl2 = 2.15, rhoTriton = 1.06, rhoCaco3 = 2.71;
+
+  const mAgua = vAgua * rhoAgua;
+  const mTriton = vTriton * rhoTriton;
+
+  const vCemento = mCemento / rhoCemento;
+  const vCacl2 = mCacl2 / rhoCacl2;
+  const vCaco3 = mCaco3 > 0 ? mCaco3 / rhoCaco3 : 0;
+
+  const masaTotal = mCemento + mCacl2 + mAgua + mTriton + mCaco3;
+  const vTeorico = vCemento + vCacl2 + vAgua + vTriton + vCaco3;
+  const rhoTeorica = masaTotal / vTeorico;
+
+  // Estimación de aire en base al % m/m de Triton respecto al Cemento
+  const dosisTritonPct = (mTriton / mCemento) * 100;
+  const pctAire = 3.0 + (dosisTritonPct * 5.0); // Ajuste empírico
+
+  const vRealEstimado = vTeorico / (1 - (pctAire / 100));
+  const rhoCorregida = masaTotal / vRealEstimado;
+
+  document.getElementById('resMasa').innerText = masaTotal.toFixed(2);
+  document.getElementById('resTeorica').innerText = rhoTeorica.toFixed(3);
+  document.getElementById('resAire').innerText = pctAire.toFixed(1);
+  document.getElementById('resCorregida').innerText = rhoCorregida.toFixed(3);
+
+  document.getElementById('resultados').style.display = 'block';
+}
+</script>
+
+</body>
+</html>
