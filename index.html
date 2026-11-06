@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lab-Sim: Densidad & Mesoporosidad Triton X-100</title>
+  <title>Lab-Sim: Densidad & Dureza Teórica Triton X-100</title>
   <!-- Google Fonts & Chart.js -->
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -15,7 +15,8 @@
       --card-border: rgba(255, 255, 255, 0.1);
       --accent-cyan: #06b6d4;
       --accent-green: #10b981;
-      --accent-purple: #8b5cf6;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
     }
@@ -34,7 +35,7 @@
 
     .dashboard {
       width: 100%;
-      max-width: 950px;
+      max-width: 980px;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
@@ -138,7 +139,7 @@
     }
 
     .stat-value {
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       font-weight: 800;
       color: #fff;
     }
@@ -147,7 +148,10 @@
       color: var(--accent-green);
     }
 
-    /* Barra de progreso desmoldeo */
+    .stat-value.amber {
+      color: var(--accent-amber);
+    }
+
     .mold-status {
       background: rgba(15, 23, 42, 0.5);
       border-radius: 14px;
@@ -202,7 +206,7 @@
 
     <div class="input-group">
       <label>Volumen Triton X-100 (mL) <span>0 - 1.89 mL</span></label>
-      <input type="number" id="triton" value="0.94" step="0.01" oninput="actualizarDosisPct()">
+      <input type="number" id="triton" value="0.94" step="0.01">
     </div>
 
     <div class="input-group">
@@ -210,14 +214,22 @@
       <input type="number" id="caco3" value="0.0" step="0.1">
     </div>
 
-    <button onclick="simularDensidad()">Simular y Calcular</button>
+    <button onclick="simularDensidadYDureza()">Simular Densidad & Dureza</button>
   </div>
 
   <!-- PANEL DERECHO: DASHBOARD DE RESULTADOS -->
   <div class="card">
-    <div class="card-title">📊 Indicadores & Curva de Densidad</div>
+    <div class="card-title">📊 Resultados Teóricos & Gráfico</div>
 
     <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-label">Densidad Corregida</div>
+        <div class="stat-value highlight" id="valCorregida">0.00 g/cm³</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Dureza Teórica</div>
+        <div class="stat-value amber" id="valDurezaTeorica">0.0 SH-A</div>
+      </div>
       <div class="stat-box">
         <div class="stat-label">Masa Total</div>
         <div class="stat-value" id="valMasa">0.0 g</div>
@@ -226,20 +238,12 @@
         <div class="stat-label">Aire Ocluido Est.</div>
         <div class="stat-value" id="valAire">0.0%</div>
       </div>
-      <div class="stat-box">
-        <div class="stat-label">Densidad Teórica</div>
-        <div class="stat-value" id="valTeorica">0.00 g/cm³</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Densidad Corregida</div>
-        <div class="stat-value highlight" id="valCorregida">0.00 g/cm³</div>
-      </div>
     </div>
 
     <!-- Indicador de Criterio de Desmoldeo (≥ 70 SH-A) -->
     <div class="mold-status">
       <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
-        <span>Estimación Criterio Desmoldeo (T1: 180 min)</span>
+        <span>Desmoldeo Teórico (≥ 70 SH-A @ 180 min)</span>
         <strong id="valShoreText" style="color:var(--accent-cyan);">75 SH-A (APROBADO)</strong>
       </div>
       <div class="progress-bar">
@@ -247,7 +251,7 @@
       </div>
     </div>
 
-    <!-- Gráfico interactivo -->
+    <!-- Gráfico dual: Densidad y Dureza -->
     <div class="chart-container">
       <canvas id="densityChart"></canvas>
     </div>
@@ -263,31 +267,48 @@ function inicializarGrafico() {
     type: 'line',
     data: {
       labels: ['0.00%', '0.25%', '0.50%', '1.00%', '1.50%', '2.00%'],
-      datasets: [{
-        label: 'Densidad Estimada (g/cm³)',
-        data: [],
-        borderColor: '#06b6d4',
-        backgroundColor: 'rgba(6, 182, 212, 0.1)',
-        borderWidth: 3,
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: '#10b981',
-        pointRadius: 5
-      }]
+      datasets: [
+        {
+          label: 'Densidad (g/cm³)',
+          data: [],
+          borderColor: '#06b6d4',
+          backgroundColor: 'rgba(6, 182, 212, 0.1)',
+          borderWidth: 2,
+          yAxisID: 'yDensidad',
+          tension: 0.4
+        },
+        {
+          label: 'Dureza Teórica (SH-A)',
+          data: [],
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          yAxisID: 'yDureza',
+          tension: 0.4
+        }
+      ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: { legend: { labels: { color: '#94a3b8', font: { size: 10 } } } },
       scales: {
         x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        yDensidad: {
+          type: 'linear', position: 'left',
+          ticks: { color: '#06b6d4' }, grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        yDureza: {
+          type: 'linear', position: 'right',
+          ticks: { color: '#f59e0b' }, grid: { drawOnChartArea: false }
+        }
       }
     }
   });
 }
 
-function simularDensidad() {
+function simularDensidadYDureza() {
   const mCemento = parseFloat(document.getElementById('cemento').value) || 0;
   const mCacl2 = parseFloat(document.getElementById('cacl2').value) || 0;
   const vAgua = parseFloat(document.getElementById('agua').value) || 0;
@@ -312,21 +333,26 @@ function simularDensidad() {
   const vRealEstimado = vTeorico / (1 - (pctAire / 100));
   const rhoCorregida = masaTotal / vRealEstimado;
 
-  // Actualizar estadísticas
+  // CÁLCULO DE DUREZA TEÓRICA SHORE A
+  // Base 82 SH-A menos caída por mesoporosidad del Triton
+  let durezaTeorica = Math.max(0, 82.5 - (dosisTritonPct * 16.5));
+
+  // Actualizar indicadores
   document.getElementById('valMasa').innerText = masaTotal.toFixed(1) + ' g';
-  document.getElementById('valTeorica').innerText = rhoTeorica.toFixed(3) + ' g/cm³';
   document.getElementById('valAire').innerText = pctAire.toFixed(1) + '%';
   document.getElementById('valCorregida').innerText = rhoCorregida.toFixed(3) + ' g/cm³';
+  document.getElementById('valDurezaTeorica').innerText = durezaTeorica.toFixed(1) + ' SH-A';
 
-  // Simulación de dureza estimada según la porosidad entrampada
-  let shoreEstimado = Math.max(30, Math.round(82 - (dosisTritonPct * 18)));
-  document.getElementById('valShoreText').innerText = shoreEstimado + ' SH-A ' + (shoreEstimado >= 70 ? '✅ (APROBADO)' : '❌ (NO DESMOLDA)');
-  document.getElementById('valShoreText').style.color = shoreEstimado >= 70 ? '#10b981' : '#f43f5e';
-  document.getElementById('shoreProgress').style.width = Math.min(100, shoreEstimado) + '%';
-  document.getElementById('shoreProgress').style.background = shoreEstimado >= 70 ? 'linear-gradient(90deg, #10b981, #06b6d4)' : 'linear-gradient(90deg, #f43f5e, #fb923c)';
+  // Evaluación de Desmoldeo (≥ 70 SH-A)
+  const aprobado = durezaTeorica >= 70.0;
+  document.getElementById('valShoreText').innerText = durezaTeorica.toFixed(1) + ' SH-A ' + (aprobado ? '✅ (DESMOLDA)' : '❌ (NO DESMOLDA)');
+  document.getElementById('valShoreText').style.color = aprobado ? '#10b981' : '#f43f5e';
+  document.getElementById('shoreProgress').style.width = Math.min(100, (durezaTeorica / 100) * 100) + '%';
+  document.getElementById('shoreProgress').style.background = aprobado ? 'linear-gradient(90deg, #10b981, #06b6d4)' : 'linear-gradient(90deg, #f43f5e, #fb923c)';
 
-  // Generar curva para la gráfica (Tratamientos TX-0.00 a TX-2.00)
-  const curveData = [0.0, 0.25, 0.50, 1.0, 1.5, 2.0].map(pct => {
+  // Curvas de Densidad y Dureza para el gráfico
+  const tritonSteps = [0.0, 0.25, 0.50, 1.0, 1.5, 2.0];
+  const curveDensidad = tritonSteps.map(pct => {
     let mT = (mCemento * (pct / 100));
     let vT = mT / rhoTriton;
     let vTeo = vCemento + vCacl2 + vAgua + vT + vCaco3;
@@ -335,16 +361,18 @@ function simularDensidad() {
     return (mTot / (vTeo / (1 - (pAire / 100)))).toFixed(3);
   });
 
-  densityChart.data.datasets[0].data = curveData;
+  const curveDureza = tritonSteps.map(pct => Math.max(0, (82.5 - (pct * 16.5)).toFixed(1)));
+
+  densityChart.data.datasets[0].data = curveDensidad;
+  densityChart.data.datasets[1].data = curveDureza;
   densityChart.update();
 }
 
 window.onload = () => {
   inicializarGrafico();
-  simularDensidad();
+  simularDensidadYDureza();
 };
 </script>
 
 </body>
 </html>
-
