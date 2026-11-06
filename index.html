@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lab-Sim: Densidad & Dureza Teórica Triton X-100</title>
+  <title>Lab-Sim: Cinética de Secado & Dureza Triton X-100</title>
   <!-- Google Fonts & Chart.js -->
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -79,7 +79,7 @@
       margin-bottom: 6px;
     }
 
-    input {
+    input, select {
       width: 100%;
       background: rgba(15, 23, 42, 0.6);
       border: 1px solid rgba(255, 255, 255, 0.15);
@@ -91,7 +91,7 @@
       transition: all 0.3s ease;
     }
 
-    input:focus {
+    input:focus, select:focus {
       outline: none;
       border-color: var(--accent-cyan);
       box-shadow: 0 0 12px rgba(6, 182, 212, 0.3);
@@ -144,13 +144,8 @@
       color: #fff;
     }
 
-    .stat-value.highlight {
-      color: var(--accent-green);
-    }
-
-    .stat-value.amber {
-      color: var(--accent-amber);
-    }
+    .stat-value.highlight { color: var(--accent-green); }
+    .stat-value.amber { color: var(--accent-amber); }
 
     .mold-status {
       background: rgba(15, 23, 42, 0.5);
@@ -185,10 +180,21 @@
 <body>
 
 <div class="dashboard">
-  <!-- PANEL IZQUIERDO: FORMULARIO -->
+  <!-- PANEL IZQUIERDO: FORMULARIO DE ENTRADA DE DATOS -->
   <div class="card">
-    <div class="card-title">🧪 Parámetros del Ensayo (Guía #8)</div>
+    <div class="card-title">🧪 Calculadora de Mezclas</div>
     
+    <div class="input-group">
+      <label>Tiempo de Secado / Hidratación <span>Intervalos 180 min</span></label>
+      <select id="tiempoSecado">
+        <option value="180" selected>180 min (T1 - Desmoldeo Base)</option>
+        <option value="360">360 min (T2 - 6 Horas)</option>
+        <option value="540">540 min (T3 - 9 Horas)</option>
+        <option value="720">720 min (T4 - 12 Horas)</option>
+        <option value="1440">1440 min (24 Horas)</option>
+      </select>
+    </div>
+
     <div class="input-group">
       <label>Masa Cemento (g) <span>Recomendado: 100 g</span></label>
       <input type="number" id="cemento" value="100.0" step="0.1">
@@ -214,25 +220,25 @@
       <input type="number" id="caco3" value="0.0" step="0.1">
     </div>
 
-    <button onclick="simularDensidadYDureza()">Simular Densidad & Dureza</button>
+    <button onclick="simularCinéticaSecado()">Simular Cinética de Dureza</button>
   </div>
 
-  <!-- PANEL DERECHO: DASHBOARD DE RESULTADOS -->
+  <!-- PANEL DERECHO: RESULTADOS Y GRÁFICO TEMPORAL -->
   <div class="card">
-    <div class="card-title">📊 Resultados Teóricos & Gráfico</div>
+    <div class="card-title">📊 Cinética & Dureza Teórica por Intervalo</div>
 
     <div class="stat-grid">
       <div class="stat-box">
-        <div class="stat-label">Densidad Corregida</div>
-        <div class="stat-value highlight" id="valCorregida">0.00 g/cm³</div>
+        <div class="stat-label">Tiempo Seleccionado</div>
+        <div class="stat-value" id="valTiempo">180 min</div>
       </div>
       <div class="stat-box">
         <div class="stat-label">Dureza Teórica</div>
         <div class="stat-value amber" id="valDurezaTeorica">0.0 SH-A</div>
       </div>
       <div class="stat-box">
-        <div class="stat-label">Masa Total</div>
-        <div class="stat-value" id="valMasa">0.0 g</div>
+        <div class="stat-label">Densidad Corregida</div>
+        <div class="stat-value highlight" id="valCorregida">0.00 g/cm³</div>
       </div>
       <div class="stat-box">
         <div class="stat-label">Aire Ocluido Est.</div>
@@ -240,52 +246,52 @@
       </div>
     </div>
 
-    <!-- Indicador de Criterio de Desmoldeo (≥ 70 SH-A) -->
+    <!-- Criterio de Desmoldeo -->
     <div class="mold-status">
       <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
-        <span>Desmoldeo Teórico (≥ 70 SH-A @ 180 min)</span>
-        <strong id="valShoreText" style="color:var(--accent-cyan);">75 SH-A (APROBADO)</strong>
+        <span id="lblDesmoldeo">Desmoldeo (≥ 70 SH-A)</span>
+        <strong id="valShoreText" style="color:var(--accent-cyan);">75.0 SH-A (APROBADO)</strong>
       </div>
       <div class="progress-bar">
         <div class="progress-fill" id="shoreProgress" style="width: 75%;"></div>
       </div>
     </div>
 
-    <!-- Gráfico dual: Densidad y Dureza -->
+    <!-- Gráfico de Cinética de Dureza (Evolución en el tiempo) -->
     <div class="chart-container">
-      <canvas id="densityChart"></canvas>
+      <canvas id="timeChart"></canvas>
     </div>
   </div>
 </div>
 
 <script>
-let densityChart;
+let timeChart;
 
 function inicializarGrafico() {
-  const ctx = document.getElementById('densityChart').getContext('2d');
-  densityChart = new Chart(ctx, {
+  const ctx = document.getElementById('timeChart').getContext('2d');
+  timeChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: ['0.00%', '0.25%', '0.50%', '1.00%', '1.50%', '2.00%'],
+      labels: ['180 min', '360 min', '540 min', '720 min', '1440 min'],
       datasets: [
         {
-          label: 'Densidad (g/cm³)',
-          data: [],
-          borderColor: '#06b6d4',
-          backgroundColor: 'rgba(6, 182, 212, 0.1)',
-          borderWidth: 2,
-          yAxisID: 'yDensidad',
-          tension: 0.4
-        },
-        {
-          label: 'Dureza Teórica (SH-A)',
+          label: 'Evolución de Dureza (SH-A)',
           data: [],
           borderColor: '#f59e0b',
-          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+          backgroundColor: 'rgba(245, 158, 11, 0.15)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.3,
+          pointBackgroundColor: '#10b981',
+          pointRadius: 6
+        },
+        {
+          label: 'Límite Desmoldeo (70 SH-A)',
+          data: [70, 70, 70, 70, 70],
+          borderColor: '#f43f5e',
           borderWidth: 2,
-          borderDash: [5, 5],
-          yAxisID: 'yDureza',
-          tension: 0.4
+          borderDash: [6, 6],
+          pointRadius: 0
         }
       ]
     },
@@ -295,20 +301,14 @@ function inicializarGrafico() {
       plugins: { legend: { labels: { color: '#94a3b8', font: { size: 10 } } } },
       scales: {
         x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-        yDensidad: {
-          type: 'linear', position: 'left',
-          ticks: { color: '#06b6d4' }, grid: { color: 'rgba(255,255,255,0.05)' }
-        },
-        yDureza: {
-          type: 'linear', position: 'right',
-          ticks: { color: '#f59e0b' }, grid: { drawOnChartArea: false }
-        }
+        y: { min: 0, max: 100, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
       }
     }
   });
 }
 
-function simularDensidadYDureza() {
+function simularCinéticaSecado() {
+  const tSecado = parseInt(document.getElementById('tiempoSecado').value) || 180;
   const mCemento = parseFloat(document.getElementById('cemento').value) || 0;
   const mCacl2 = parseFloat(document.getElementById('cacl2').value) || 0;
   const vAgua = parseFloat(document.getElementById('agua').value) || 0;
@@ -326,51 +326,42 @@ function simularDensidadYDureza() {
 
   const masaTotal = mCemento + mCacl2 + mAgua + mTriton + mCaco3;
   const vTeorico = vCemento + vCacl2 + vAgua + vTriton + vCaco3;
-  const rhoTeorica = masaTotal / vTeorico;
 
   const dosisTritonPct = (mTriton / mCemento) * 100;
   const pctAire = 3.0 + (dosisTritonPct * 5.2);
   const vRealEstimado = vTeorico / (1 - (pctAire / 100));
   const rhoCorregida = masaTotal / vRealEstimado;
 
-  // CÁLCULO DE DUREZA TEÓRICA SHORE A
-  // Base 82 SH-A menos caída por mesoporosidad del Triton
-  let durezaTeorica = Math.max(0, 82.5 - (dosisTritonPct * 16.5));
+  function calcularDurezaAlTiempo(minutos, pctTX) {
+    const durezaMaxSaturacion = 92.0 - (pctTX * 12.0);
+    const kHidratacion = 0.0075;
+    let dureza = durezaMaxSaturacion * (1 - Math.exp(-kHidratacion * minutos));
+    return Math.max(0, Math.min(100, dureza));
+  }
 
-  // Actualizar indicadores
-  document.getElementById('valMasa').innerText = masaTotal.toFixed(1) + ' g';
+  const durezaTeoricaActual = calcularDurezaAlTiempo(tSecado, dosisTritonPct);
+
+  document.getElementById('valTiempo').innerText = tSecado + ' min';
   document.getElementById('valAire').innerText = pctAire.toFixed(1) + '%';
   document.getElementById('valCorregida').innerText = rhoCorregida.toFixed(3) + ' g/cm³';
-  document.getElementById('valDurezaTeorica').innerText = durezaTeorica.toFixed(1) + ' SH-A';
+  document.getElementById('valDurezaTeorica').innerText = durezaTeoricaActual.toFixed(1) + ' SH-A';
 
-  // Evaluación de Desmoldeo (≥ 70 SH-A)
-  const aprobado = durezaTeorica >= 70.0;
-  document.getElementById('valShoreText').innerText = durezaTeorica.toFixed(1) + ' SH-A ' + (aprobado ? '✅ (DESMOLDA)' : '❌ (NO DESMOLDA)');
+  const aprobado = durezaTeoricaActual >= 70.0;
+  document.getElementById('valShoreText').innerText = durezaTeoricaActual.toFixed(1) + ' SH-A ' + (aprobado ? '✅ (APROBADO)' : '❌ (NO DESMOLDA)');
   document.getElementById('valShoreText').style.color = aprobado ? '#10b981' : '#f43f5e';
-  document.getElementById('shoreProgress').style.width = Math.min(100, (durezaTeorica / 100) * 100) + '%';
+  document.getElementById('shoreProgress').style.width = Math.min(100, durezaTeoricaActual) + '%';
   document.getElementById('shoreProgress').style.background = aprobado ? 'linear-gradient(90deg, #10b981, #06b6d4)' : 'linear-gradient(90deg, #f43f5e, #fb923c)';
 
-  // Curvas de Densidad y Dureza para el gráfico
-  const tritonSteps = [0.0, 0.25, 0.50, 1.0, 1.5, 2.0];
-  const curveDensidad = tritonSteps.map(pct => {
-    let mT = (mCemento * (pct / 100));
-    let vT = mT / rhoTriton;
-    let vTeo = vCemento + vCacl2 + vAgua + vT + vCaco3;
-    let mTot = mCemento + mCacl2 + mAgua + mT + mCaco3;
-    let pAire = 3.0 + (pct * 5.2);
-    return (mTot / (vTeo / (1 - (pAire / 100)))).toFixed(3);
-  });
+  const intervalosTiempo = [180, 360, 540, 720, 1440];
+  const datosCurvaTiempo = intervalosTiempo.map(t => calcularDurezaAlTiempo(t, dosisTritonPct).toFixed(1));
 
-  const curveDureza = tritonSteps.map(pct => Math.max(0, (82.5 - (pct * 16.5)).toFixed(1)));
-
-  densityChart.data.datasets[0].data = curveDensidad;
-  densityChart.data.datasets[1].data = curveDureza;
-  densityChart.update();
+  timeChart.data.datasets[0].data = datosCurvaTiempo;
+  timeChart.update();
 }
 
 window.onload = () => {
   inicializarGrafico();
-  simularDensidadYDureza();
+  simularCinéticaSecado();
 };
 </script>
 
