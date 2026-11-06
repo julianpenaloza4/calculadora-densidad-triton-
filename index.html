@@ -147,6 +147,31 @@
     .stat-value.highlight { color: var(--accent-green); }
     .stat-value.amber { color: var(--accent-amber); }
 
+    /* RECUADRO DE SOLUCIÓN PREDICHA */
+    .solution-box {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .solution-title {
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent-green);
+      margin-bottom: 6px;
+    }
+
+    .solution-text {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.5;
+    }
+
     .mold-status {
       background: rgba(15, 23, 42, 0.5);
       border-radius: 14px;
@@ -172,7 +197,7 @@
 
     .chart-container {
       position: relative;
-      height: 220px;
+      height: 200px;
       width: 100%;
     }
   </style>
@@ -180,13 +205,13 @@
 <body>
 
 <div class="dashboard">
-  <!-- PANEL IZQUIERDO: FORMULARIO DE ENTRADA DE DATOS -->
+  <!-- PANEL IZQUIERDO: FORMULARIO DE ENTRADA -->
   <div class="card">
     <div class="card-title">🧪 Calculadora de Mezclas</div>
     
     <div class="input-group">
-      <label>Tiempo de Secado / Hidratación <span>Intervalos 180 min</span></label>
-      <select id="tiempoSecado">
+      <label>Tiempo de Secado / Hidratación <span>Intervalos de 180 min</span></label>
+      <select id="tiempoSecado" onchange="simularCinéticaSecado()">
         <option value="180" selected>180 min (T1 - Desmoldeo Base)</option>
         <option value="360">360 min (T2 - 6 Horas)</option>
         <option value="540">540 min (T3 - 9 Horas)</option>
@@ -197,43 +222,47 @@
 
     <div class="input-group">
       <label>Masa Cemento (g) <span>Recomendado: 100 g</span></label>
-      <input type="number" id="cemento" value="100.0" step="0.1">
+      <input type="number" id="cemento" value="100.0" step="0.1" oninput="simularCinéticaSecado()">
     </div>
 
     <div class="input-group">
       <label>Dosis Acelerante CaCl₂ (g) <span>1.5% m/m</span></label>
-      <input type="number" id="cacl2" value="1.50" step="0.01">
+      <input type="number" id="cacl2" value="1.50" step="0.01" oninput="simularCinéticaSecado()">
     </div>
 
     <div class="input-group">
       <label>Volumen Agua (mL) <span>Relación A/C = 0.30</span></label>
-      <input type="number" id="agua" value="30.0" step="0.1">
+      <input type="number" id="agua" value="30.0" step="0.1" oninput="simularCinéticaSecado()">
     </div>
 
     <div class="input-group">
       <label>Volumen Triton X-100 (mL) <span>0 - 1.89 mL</span></label>
-      <input type="number" id="triton" value="0.94" step="0.01">
+      <input type="number" id="triton" value="0.94" step="0.01" oninput="simularCinéticaSecado()">
     </div>
 
     <div class="input-group">
       <label>Carbonato de Calcio CaCO₃ (g) <span>Opcional</span></label>
-      <input type="number" id="caco3" value="0.0" step="0.1">
+      <input type="number" id="caco3" value="0.0" step="0.1" oninput="simularCinéticaSecado()">
     </div>
 
-    <button onclick="simularCinéticaSecado()">Simular Cinética de Dureza</button>
+    <button onclick="simularCinéticaSecado()">Calcular Solución Teórica</button>
   </div>
 
-  <!-- PANEL DERECHO: RESULTADOS Y GRÁFICO TEMPORAL -->
+  <!-- PANEL DERECHO: RESULTADOS Y MENSAJE DE SOLUCIÓN -->
   <div class="card">
-    <div class="card-title">📊 Cinética & Dureza Teórica por Intervalo</div>
+    <div class="card-title">📊 Solución Teórica & Cinética</div>
+
+    <!-- RECUADRO DE SOLUCIÓN DINÁMICA -->
+    <div class="solution-box" id="boxSolucion">
+      <div class="solution-title">💡 Solución Estimada:</div>
+      <div class="solution-text" id="mensajeSolucion">
+        Calculando dureza esperada...
+      </div>
+    </div>
 
     <div class="stat-grid">
       <div class="stat-box">
-        <div class="stat-label">Tiempo Seleccionado</div>
-        <div class="stat-value" id="valTiempo">180 min</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Dureza Teórica</div>
+        <div class="stat-label">Dureza Esperada</div>
         <div class="stat-value amber" id="valDurezaTeorica">0.0 SH-A</div>
       </div>
       <div class="stat-box">
@@ -241,15 +270,19 @@
         <div class="stat-value highlight" id="valCorregida">0.00 g/cm³</div>
       </div>
       <div class="stat-box">
+        <div class="stat-label">Masa Total</div>
+        <div class="stat-value" id="valMasa">0.0 g</div>
+      </div>
+      <div class="stat-box">
         <div class="stat-label">Aire Ocluido Est.</div>
         <div class="stat-value" id="valAire">0.0%</div>
       </div>
     </div>
 
-    <!-- Criterio de Desmoldeo -->
+    <!-- Criterio de Desmoldeo (≥ 70 SH-A) -->
     <div class="mold-status">
       <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
-        <span id="lblDesmoldeo">Desmoldeo (≥ 70 SH-A)</span>
+        <span id="lblDesmoldeo">Desmoldeo Seguro (≥ 70 SH-A)</span>
         <strong id="valShoreText" style="color:var(--accent-cyan);">75.0 SH-A (APROBADO)</strong>
       </div>
       <div class="progress-bar">
@@ -257,7 +290,7 @@
       </div>
     </div>
 
-    <!-- Gráfico de Cinética de Dureza (Evolución en el tiempo) -->
+    <!-- Gráfico de Cinética de Dureza -->
     <div class="chart-container">
       <canvas id="timeChart"></canvas>
     </div>
@@ -286,7 +319,7 @@ function inicializarGrafico() {
           pointRadius: 6
         },
         {
-          label: 'Límite Desmoldeo (70 SH-A)',
+          label: 'Criterio Desmoldeo (70 SH-A)',
           data: [70, 70, 70, 70, 70],
           borderColor: '#f43f5e',
           borderWidth: 2,
@@ -332,6 +365,7 @@ function simularCinéticaSecado() {
   const vRealEstimado = vTeorico / (1 - (pctAire / 100));
   const rhoCorregida = masaTotal / vRealEstimado;
 
+  // FUNCIÓN DE CINÉTICA EN EL TIEMPO
   function calcularDurezaAlTiempo(minutos, pctTX) {
     const durezaMaxSaturacion = 92.0 - (pctTX * 12.0);
     const kHidratacion = 0.0075;
@@ -341,13 +375,28 @@ function simularCinéticaSecado() {
 
   const durezaTeoricaActual = calcularDurezaAlTiempo(tSecado, dosisTritonPct);
 
-  document.getElementById('valTiempo').innerText = tSecado + ' min';
+  // CONSTRUCCIÓN DEL MENSAJE DE SOLUCIÓN SOLICITADO
+  const aprobado = durezaTeoricaActual >= 70.0;
+  const textoSolucion = `Después de <strong>${tSecado} minutos</strong> de secado, la mezcla debería medir una dureza de <strong>${durezaTeoricaActual.toFixed(1)} SH-A</strong>.`;
+  
+  document.getElementById('mensajeSolucion').innerHTML = textoSolucion;
+
+  // Cambiar el color del borde/fondo según desmolde o no
+  const box = document.getElementById('boxSolucion');
+  if (aprobado) {
+    box.style.background = 'rgba(16, 185, 129, 0.1)';
+    box.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+  } else {
+    box.style.background = 'rgba(244, 63, 94, 0.1)';
+    box.style.borderColor = 'rgba(244, 63, 94, 0.3)';
+  }
+
   document.getElementById('valAire').innerText = pctAire.toFixed(1) + '%';
+  document.getElementById('valMasa').innerText = masaTotal.toFixed(1) + ' g';
   document.getElementById('valCorregida').innerText = rhoCorregida.toFixed(3) + ' g/cm³';
   document.getElementById('valDurezaTeorica').innerText = durezaTeoricaActual.toFixed(1) + ' SH-A';
 
-  const aprobado = durezaTeoricaActual >= 70.0;
-  document.getElementById('valShoreText').innerText = durezaTeoricaActual.toFixed(1) + ' SH-A ' + (aprobado ? '✅ (APROBADO)' : '❌ (NO DESMOLDA)');
+  document.getElementById('valShoreText').innerText = durezaTeoricaActual.toFixed(1) + ' SH-A ' + (aprobado ? '✅ (DESMOLDA)' : '❌ (NO DESMOLDA)');
   document.getElementById('valShoreText').style.color = aprobado ? '#10b981' : '#f43f5e';
   document.getElementById('shoreProgress').style.width = Math.min(100, durezaTeoricaActual) + '%';
   document.getElementById('shoreProgress').style.background = aprobado ? 'linear-gradient(90deg, #10b981, #06b6d4)' : 'linear-gradient(90deg, #f43f5e, #fb923c)';
